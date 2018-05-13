@@ -46,3 +46,4 @@ Thumbs.db
 # Go Stuff
 /vendor
 /images
+web-assets.go
