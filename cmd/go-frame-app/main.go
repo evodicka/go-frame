@@ -29,7 +29,7 @@ func main() {
 	logger.Info("Setting up HTTP endpoint")
 
 	router := gin.Default()
-	router.Use(static.ServeRoot("/static", "images"))
+	router.Use(static.ServeRoot("/static/images", "images"))
 
 	api := router.Group("/api")
 
