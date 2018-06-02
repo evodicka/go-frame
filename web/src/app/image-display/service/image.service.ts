@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import {HttpClient} from "@angular/common/http";
-import {Observable} from "rxjs/Observable";
-import {ImageInfoTo} from "../model/image-info.to";
+import {HttpClient} from '@angular/common/http';
+import {Observable} from 'rxjs/Observable';
+import {ImageInfoTo} from '../model/image-info.to';
 
 @Injectable()
 export class ImageService {

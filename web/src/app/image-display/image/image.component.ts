@@ -1,9 +1,9 @@
 ///<reference path="../../../../node_modules/rxjs/Observable.d.ts"/>
-import {Component, OnDestroy, OnInit} from '@angular/core';
-import {ImageService} from "../service/image.service";
-import {ImageInfoTo} from "../model/image-info.to";
-import {Subscription} from "rxjs/Subscription";
-import {interval} from "rxjs/observable/interval";
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ImageService } from '../service/image.service';
+import { ImageInfoTo } from '../model/image-info.to';
+import { Subscription } from 'rxjs/Subscription';
+import { interval } from 'rxjs/observable/interval';
 
 @Component({
   selector: 'app-image',
@@ -26,7 +26,7 @@ export class ImageComponent implements OnInit, OnDestroy {
   private refreshImageData(): void {
     this.imageService.loadImageInfo().subscribe(imageData => {
       this.image = imageData;
-    })
+    });
   }
 
   private schedulePeriodicRefresh(): void {
@@ -34,7 +34,7 @@ export class ImageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if(this.subscription !== null && this.subscription !== undefined) {
+    if (this.subscription !== null && this.subscription !== undefined) {
       this.subscription.unsubscribe();
     }
   }
