@@ -6,6 +6,7 @@ import (
 	"github.com/op/go-logging"
 	"os"
 )
+
 //go:generate go-bindata-assetfs -o web-assets.go ../../web/dist/...
 
 var logger = logging.MustGetLogger("main")
@@ -25,19 +26,16 @@ func init() {
 	logging.SetBackend(backendFormatted, backendLeveld)
 }
 
-
 func main() {
 	logger.Info("Starting up Go-Frame server...")
 	logger.Info("Setting up HTTP endpoint")
 
 	router := gin.Default()
+	api := router.Group("/api")
 	router.Use(static.ServeRoot("/static/images", "images"))
 	router.Use(static.Serve("/", BinaryFileSystem("../../web/dist")))
-
-	api := router.Group("/api")
 
 	registerApiEndpoint(api)
 
 	router.Run(":8080")
 }
-
