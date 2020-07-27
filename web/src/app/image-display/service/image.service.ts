@@ -1,9 +1,11 @@
 import { Injectable } from '@angular/core';
 import {HttpClient} from '@angular/common/http';
-import {Observable} from 'rxjs/Observable';
+import {Observable} from 'rxjs';
 import {ImageInfoTo} from '../model/image-info.to';
 
-@Injectable()
+@Injectable({
+  providedIn: 'root'
+})
 export class ImageService {
 
   constructor(private httpClient: HttpClient) { }

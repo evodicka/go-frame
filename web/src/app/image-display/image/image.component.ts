@@ -2,8 +2,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ImageService } from '../service/image.service';
 import { ImageInfoTo } from '../model/image-info.to';
-import { Subscription } from 'rxjs/Subscription';
-import { interval } from 'rxjs/observable/interval';
+import { Subscription ,  interval } from 'rxjs';
 
 @Component({
   selector: 'app-image',
