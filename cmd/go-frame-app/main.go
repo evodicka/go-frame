@@ -3,32 +3,27 @@ package main
 import (
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
-	"github.com/op/go-logging"
+	"log"
 	"os"
 )
 
 //go:generate go-bindata-assetfs -o web-assets.go ../../web/dist/...
 
-var logger = logging.MustGetLogger("main")
+var (
+	WarningLogger *log.Logger
+	InfoLogger    *log.Logger
+	ErrorLogger   *log.Logger
+)
 
 func init() {
-	format := logging.MustStringFormatter(
-		`%{color}[GO-FRAME] %{time:2006/02/01 - 15:04:05.000} %{level:.5s} %{id:03x} %{shortfunc}%{color:reset} ▶ %{message}`,
-	)
-
-	backend := logging.NewLogBackend(os.Stdout, "", 0)
-	backendErr := logging.NewLogBackend(os.Stderr, "", 0)
-
-	backendFormatted := logging.NewBackendFormatter(backend, format)
-	backendLeveld := logging.AddModuleLevel(backendErr)
-	backendLeveld.SetLevel(logging.ERROR, "")
-
-	logging.SetBackend(backendFormatted, backendLeveld)
+	InfoLogger = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lmsgprefix|log.Lshortfile)
+	WarningLogger = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lmsgprefix|log.Lshortfile)
+	ErrorLogger = log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lmsgprefix|log.Lshortfile)
 }
 
 func main() {
-	logger.Info("Starting up Go-Frame server...")
-	logger.Info("Setting up HTTP endpoint")
+	InfoLogger.Println("Starting up Go-Frame server...")
+	InfoLogger.Println("Setting up HTTP endpoint")
 
 	router := gin.Default()
 	api := router.Group("/api")

@@ -31,7 +31,7 @@ func registerApiEndpoint(router *gin.RouterGroup) {
 func calculateCurrentImage() (path string, err error) {
 	files, err := ioutil.ReadDir("images")
 	if err != nil {
-		logger.Error("Cannot access images directory")
+		ErrorLogger.Println("Cannot access images directory")
 		return "", err
 	}
 
