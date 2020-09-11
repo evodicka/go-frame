@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
+	"gitlab.com/go-displays/go-frame/cmd/go-frame-app/api"
 	"log"
 	"os"
 )
@@ -26,11 +27,11 @@ func main() {
 	InfoLogger.Println("Setting up HTTP endpoint")
 
 	router := gin.Default()
-	api := router.Group("/api")
+	apiEndpoint := router.Group("/api")
 	router.Use(static.ServeRoot("/static/images", "images"))
 	router.Use(static.Serve("/", BinaryFileSystem("../../web/dist")))
 
-	registerApiEndpoint(api)
+	api.RegisterApiEndpoint(apiEndpoint)
 
 	router.Run(":8080")
 }

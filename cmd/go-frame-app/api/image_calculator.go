@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"errors"
@@ -10,22 +10,28 @@ import (
 	"time"
 )
 
+type Type string
+
+const (
+	Image Type = "IMAGE"
+	Url   Type = "URL"
+)
+
 type ImageRef struct {
-	Path string `json:"path" binding:"required"`
+	Path     string `json:"path" binding:"required"`
+	Type     Type   `json:"type" binding:"required"`
+	Metadata string `json:"metadata"`
 }
 
-func registerApiEndpoint(router *gin.RouterGroup) {
+func getCurrentImageData(context *gin.Context) {
+	fileName, err := calculateCurrentImage()
+	if err != nil {
+		context.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
 
-	router.GET("/image/current", func(context *gin.Context) {
-		fileName, err := calculateCurrentImage()
-		if err != nil {
-			context.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-
-		ref := ImageRef{Path: fileName}
-		context.JSON(http.StatusOK, ref)
-	})
+	ref := ImageRef{Path: fileName}
+	context.JSON(http.StatusOK, ref)
 }
 
 func calculateCurrentImage() (path string, err error) {
