@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
+	"gitlab.com/go-displays/go-frame/cmd/go-frame-app/model"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -10,17 +11,10 @@ import (
 	"time"
 )
 
-type Type string
-
-const (
-	Image Type = "IMAGE"
-	Url   Type = "URL"
-)
-
 type ImageRef struct {
-	Path     string `json:"path" binding:"required"`
-	Type     Type   `json:"type" binding:"required"`
-	Metadata string `json:"metadata"`
+	Path     string     `json:"path" binding:"required"`
+	Type     model.Type `json:"type" binding:"required"`
+	Metadata string     `json:"metadata"`
 }
 
 func getCurrentImageData(context *gin.Context) {
@@ -30,7 +24,7 @@ func getCurrentImageData(context *gin.Context) {
 		return
 	}
 
-	ref := ImageRef{Path: fileName}
+	ref := ImageRef{Path: fileName, Type: model.ImageType}
 	context.JSON(http.StatusOK, ref)
 }
 

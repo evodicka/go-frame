@@ -3,7 +3,9 @@ package main
 import (
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
+	adminapi "gitlab.com/go-displays/go-frame/cmd/go-frame-app/admin-api"
 	"gitlab.com/go-displays/go-frame/cmd/go-frame-app/api"
+	"gitlab.com/go-displays/go-frame/cmd/go-frame-app/persistence"
 	"log"
 	"os"
 )
@@ -28,10 +30,14 @@ func main() {
 
 	router := gin.Default()
 	apiEndpoint := router.Group("/api")
+	adminEndpoint := router.Group("/admin/api")
 	router.Use(static.ServeRoot("/static/images", "images"))
 	router.Use(static.Serve("/", BinaryFileSystem("../../web/dist")))
 
 	api.RegisterApiEndpoint(apiEndpoint)
+	adminapi.RegisterApiEndpoint(adminEndpoint)
 
 	router.Run(":8080")
+
+	defer persistence.Close()
 }
