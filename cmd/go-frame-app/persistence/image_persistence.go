@@ -2,8 +2,10 @@ package persistence
 
 import (
 	"encoding/json"
+	"errors"
 	"gitlab.com/go-displays/go-frame/cmd/go-frame-app/model"
 	bolt "go.etcd.io/bbolt"
+	"os"
 )
 
 type Image struct {
@@ -81,4 +83,54 @@ func persistImageOrder(orderBucket *bolt.Bucket, sequences []int) error {
 		err = orderBucket.Put(itob(i), itob(sequence))
 	}
 	return err
+}
+
+func DeleteImage(id int) error {
+	return Db.Update(func(tx *bolt.Tx) error {
+		metadataBucket := tx.Bucket([]byte("images"))
+		metadata := metadataBucket.Get(itob(id))
+		if metadata == nil {
+			return errors.New("Image not found")
+		}
+		var image Image
+		if err := json.Unmarshal(metadata, &image); err != nil {
+			return err
+		}
+		if err := deleteImageOnDisk(image.Path); err != nil {
+			return err
+		}
+		return metadataBucket.Delete(itob(id))
+	})
+}
+
+func deleteImageOnDisk(path string) error {
+	var filename = ImageDir + string(os.PathSeparator) + path
+	return os.Remove(filename)
+}
+
+func SaveImageMetadata(name string) (Image, error) {
+	var image Image
+	err := Db.Update(func(tx *bolt.Tx) error {
+		orderBucket := tx.Bucket([]byte("order"))
+		metadataBucket := tx.Bucket([]byte("images"))
+
+		sequence, err := metadataBucket.NextSequence()
+		if err != nil {
+			return err
+		}
+		image = Image{
+			Id:       int(sequence),
+			Path:     name,
+			Type:     model.ImageType,
+			Metadata: "",
+		}
+		imageJson, _ := json.Marshal(image)
+		err = metadataBucket.Put(itob(int(sequence)), imageJson)
+		if err != nil {
+			return err
+		}
+		order := orderBucket.Stats().KeyN
+		return orderBucket.Put(itob(order), itob(int(sequence)))
+	})
+	return image, err
 }

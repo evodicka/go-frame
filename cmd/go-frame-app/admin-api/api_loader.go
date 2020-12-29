@@ -21,4 +21,6 @@ func init() {
 func RegisterApiEndpoint(router *gin.RouterGroup) {
 	router.GET("/image", loadAllImageData)
 	router.PUT("/image", updateImageOrder)
+	router.DELETE("/image/:id", deleteImage)
+	router.POST("/image", addImage)
 }

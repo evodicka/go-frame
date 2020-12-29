@@ -5,6 +5,8 @@ import (
 	"gitlab.com/go-displays/go-frame/cmd/go-frame-app/model"
 	"gitlab.com/go-displays/go-frame/cmd/go-frame-app/persistence"
 	"net/http"
+	"os"
+	"strconv"
 )
 
 type ImageRef struct {
@@ -58,4 +60,46 @@ func updateImageOrder(context *gin.Context) {
 	}
 
 	loadAllImageData(context)
+}
+
+func deleteImage(context *gin.Context) {
+	id := context.Param("id")
+	intId, err := strconv.Atoi(id)
+	if err != nil {
+		context.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	err = persistence.DeleteImage(intId)
+	if err != nil {
+		context.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	context.Status(http.StatusOK)
+}
+
+func addImage(context *gin.Context) {
+	form, err := context.FormFile("image")
+	if err != nil || form == nil {
+		context.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	err = context.SaveUploadedFile(form, persistence.ImageDir+string(os.PathSeparator)+form.Filename)
+	if err != nil {
+		context.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	loadedImage, err := persistence.SaveImageMetadata(form.Filename)
+	if err != nil {
+		context.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	var image = ImageRef{
+		Id:       loadedImage.Id,
+		Path:     loadedImage.Path,
+		Type:     loadedImage.Type,
+		Metadata: loadedImage.Metadata,
+	}
+
+	context.JSON(http.StatusOK, image)
 }
