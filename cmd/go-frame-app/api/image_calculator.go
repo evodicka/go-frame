@@ -1,13 +1,10 @@
 package api
 
 import (
-	"errors"
 	"github.com/gin-gonic/gin"
 	"gitlab.com/go-displays/go-frame/cmd/go-frame-app/model"
-	"io/ioutil"
+	"gitlab.com/go-displays/go-frame/cmd/go-frame-app/persistence"
 	"net/http"
-	"os"
-	"strings"
 	"time"
 )
 
@@ -29,33 +26,23 @@ func getCurrentImageData(context *gin.Context) {
 }
 
 func calculateCurrentImage() (path string, err error) {
-	files, err := ioutil.ReadDir("images")
+	status, err := persistence.GetCurrentStatus()
 	if err != nil {
-		ErrorLogger.Println("Cannot access images directory")
+		ErrorLogger.Println("Cannot read current status")
 		return "", err
 	}
-
-	filtered := filter(files, func(info os.FileInfo) bool {
-		return !info.IsDir() && strings.HasSuffix(info.Name(), ".jpg")
-	})
-
-	if len(filtered) == 0 {
-		return "", errors.New("Images directory is empty")
-	}
-
-	_, min, _ := time.Now().Clock()
-	duration := 60 / len(filtered)
-	index := min / duration
-
-	return filtered[index].Name(), nil
-}
-
-func filter(vs []os.FileInfo, f func(info os.FileInfo) bool) []os.FileInfo {
-	vsf := make([]os.FileInfo, 0)
-	for _, v := range vs {
-		if f(v) {
-			vsf = append(vsf, v)
+	var image persistence.Image
+	if time.Since(status.LastSwitch).Seconds() > float64(status.ImageDuration) {
+		image, err = persistence.LoadNextImage(status.CurrentImageId)
+		if err == nil {
+			err = persistence.UpdateImageStatus(image.Id)
 		}
+	} else {
+		image, err = persistence.LoadImage(status.CurrentImageId)
 	}
-	return vsf
+	if err != nil {
+		ErrorLogger.Println("Cannot read Image")
+		return "", err
+	}
+	return image.Path, err
 }

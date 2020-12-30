@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"gitlab.com/go-displays/go-frame/cmd/go-frame-app/model"
@@ -19,12 +20,15 @@ const (
 	ImageDir string = "images"
 )
 
+var orderBucketName = []byte("order")
+var metadataBucketName = []byte("images")
+
 func initImageBuckets(tx *bolt.Tx) error {
-	metadataBucket, err := tx.CreateBucketIfNotExists([]byte("images"))
+	metadataBucket, err := tx.CreateBucketIfNotExists(metadataBucketName)
 	if err != nil {
 		return err
 	}
-	orderBucket, err := tx.CreateBucketIfNotExists([]byte("order"))
+	orderBucket, err := tx.CreateBucketIfNotExists(orderBucketName)
 	if err != nil {
 		return err
 	}
@@ -38,26 +42,71 @@ func initImageBuckets(tx *bolt.Tx) error {
 func LoadImages() ([]Image, error) {
 	var images []Image
 	err := Db.View(func(tx *bolt.Tx) error {
-		orderBucket := tx.Bucket([]byte("order"))
-		metadataBucket := tx.Bucket([]byte("images"))
+		orderBucket := tx.Bucket(orderBucketName)
+		metadataBucket := tx.Bucket(metadataBucketName)
 
 		err := orderBucket.ForEach(func(key, value []byte) error {
-			image := metadataBucket.Get(value)
-			if image != nil {
-				var imageStruct Image
-				err := json.Unmarshal(image, &imageStruct)
-				if err == nil {
-					images = append(images, imageStruct)
-				} else {
-					return err
-				}
+			image, err := loadImageByByteId(value, metadataBucket)
+			if err == nil {
+				images = append(images, image)
 			}
 			return nil
 		})
-
 		return err
 	})
 	return images, err
+}
+
+func LoadImage(id int) (Image, error) {
+	var image Image
+	err := Db.View(func(tx *bolt.Tx) error {
+		metadataBucket := tx.Bucket(metadataBucketName)
+		returnedImage, err := loadImageByByteId(itob(id), metadataBucket)
+		image = returnedImage
+		return err
+	})
+	return image, err
+}
+
+func LoadNextImage(id int) (Image, error) {
+	var image Image
+	err := Db.View(func(tx *bolt.Tx) error {
+		orderBucket := tx.Bucket(orderBucketName)
+		metadataBucket := tx.Bucket(metadataBucketName)
+		cursor := orderBucket.Cursor()
+		if id < 0 {
+			_, value := cursor.First()
+			image, _ = loadImageByByteId(value, metadataBucket)
+		} else {
+			for key, value := cursor.First(); key != nil; key, value = cursor.Next() {
+				if bytes.Equal(value, itob(id)) {
+					k, v := cursor.Next()
+					if k == nil {
+						k, v = cursor.First()
+					}
+					image, _ = loadImageByByteId(v, metadataBucket)
+					break
+				}
+			}
+		}
+		return nil
+	})
+	return image, err
+
+}
+
+func loadImageByByteId(id []byte, metadataBucket *bolt.Bucket) (Image, error) {
+	image := metadataBucket.Get(id)
+	if image != nil {
+		var imageStruct Image
+		err := json.Unmarshal(image, &imageStruct)
+		if err != nil {
+			return Image{}, err
+		} else {
+			return imageStruct, nil
+		}
+	}
+	return Image{}, errors.New("Image not found")
 }
 
 func ReorderImages(images []Image) error {
@@ -66,7 +115,7 @@ func ReorderImages(images []Image) error {
 		sequences = append(sequences, image.Id)
 	}
 	return Db.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte("order"))
+		bucket := tx.Bucket(orderBucketName)
 		return persistImageOrder(bucket, sequences)
 	})
 }
@@ -87,7 +136,7 @@ func persistImageOrder(orderBucket *bolt.Bucket, sequences []int) error {
 
 func DeleteImage(id int) error {
 	return Db.Update(func(tx *bolt.Tx) error {
-		metadataBucket := tx.Bucket([]byte("images"))
+		metadataBucket := tx.Bucket(metadataBucketName)
 		metadata := metadataBucket.Get(itob(id))
 		if metadata == nil {
 			return errors.New("Image not found")
@@ -111,8 +160,8 @@ func deleteImageOnDisk(path string) error {
 func SaveImageMetadata(name string) (Image, error) {
 	var image Image
 	err := Db.Update(func(tx *bolt.Tx) error {
-		orderBucket := tx.Bucket([]byte("order"))
-		metadataBucket := tx.Bucket([]byte("images"))
+		orderBucket := tx.Bucket(orderBucketName)
+		metadataBucket := tx.Bucket(metadataBucketName)
 
 		sequence, err := metadataBucket.NextSequence()
 		if err != nil {
