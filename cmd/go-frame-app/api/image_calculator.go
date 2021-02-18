@@ -26,16 +26,12 @@ func getCurrentImageData(context *gin.Context) {
 }
 
 func calculateCurrentImage() (path string, err error) {
-	status, err := persistence.GetCurrentStatus()
-	if err != nil {
-		ErrorLogger.Println("Cannot read current status")
-		return "", err
-	}
+	status := persistence.GetCurrentStatus()
 	var image persistence.Image
 	if time.Since(status.LastSwitch).Seconds() > float64(status.ImageDuration) {
 		image, err = persistence.LoadNextImage(status.CurrentImageId)
 		if err == nil {
-			err = persistence.UpdateImageStatus(image.Id)
+			persistence.UpdateImageStatus(image.Id)
 		}
 	} else {
 		image, err = persistence.LoadImage(status.CurrentImageId)
