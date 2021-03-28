@@ -3,9 +3,9 @@ package main
 import (
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
-	adminapi "gitlab.com/go-displays/go-frame/cmd/go-frame-app/admin-api"
-	"gitlab.com/go-displays/go-frame/cmd/go-frame-app/api"
-	"gitlab.com/go-displays/go-frame/cmd/go-frame-app/persistence"
+	adminapi "go.evodicka.dev/go-frame/cmd/go-frame-app/admin-api"
+	"go.evodicka.dev/go-frame/cmd/go-frame-app/api"
+	"go.evodicka.dev/go-frame/cmd/go-frame-app/persistence"
 	"log"
 	"os"
 )

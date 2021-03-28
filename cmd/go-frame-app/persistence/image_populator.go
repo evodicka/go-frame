@@ -2,8 +2,8 @@ package persistence
 
 import (
 	"encoding/json"
-	"gitlab.com/go-displays/go-frame/cmd/go-frame-app/model"
 	bolt "go.etcd.io/bbolt"
+	"go.evodicka.dev/go-frame/cmd/go-frame-app/model"
 	"io/ioutil"
 	"os"
 	"strconv"

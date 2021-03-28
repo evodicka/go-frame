@@ -2,8 +2,8 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	"gitlab.com/go-displays/go-frame/cmd/go-frame-app/model"
-	"gitlab.com/go-displays/go-frame/cmd/go-frame-app/persistence"
+	"go.evodicka.dev/go-frame/cmd/go-frame-app/model"
+	"go.evodicka.dev/go-frame/cmd/go-frame-app/persistence"
 	"net/http"
 	"time"
 )
