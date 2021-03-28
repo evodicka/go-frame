@@ -1,3 +1,3 @@
 cd web
 npm install
-ng build --prod
+npm run-script build

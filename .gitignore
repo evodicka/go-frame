@@ -5,6 +5,7 @@
 /web/dist-server
 /web/tmp
 /web/out-tsc
+/cmd/go-frame-app/web/
 
 # dependencies
 /web/node_modules
@@ -47,3 +48,4 @@ Thumbs.db
 /vendor
 /images
 web-assets.go
+

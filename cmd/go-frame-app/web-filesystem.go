@@ -1,23 +1,27 @@
 package main
 
 import (
-	"github.com/elazarl/go-bindata-assetfs"
+	"embed"
+	"io/fs"
 	"net/http"
 	"strings"
 )
 
-type binaryFileSystem struct {
+//go:embed web/*
+var web embed.FS
+
+type embeddedFileSystem struct {
 	fs http.FileSystem
 }
 
-func (b *binaryFileSystem) Open(name string) (http.File, error) {
-	return b.fs.Open(name)
+func (b *embeddedFileSystem) Open(name string) (http.File, error) {
+	return b.fs.Open(setDefault(name))
 }
 
-func (b *binaryFileSystem) Exists(prefix string, filepath string) bool {
+func (b *embeddedFileSystem) Exists(prefix string, filepath string) bool {
 
 	if p := strings.TrimPrefix(filepath, prefix); len(p) < len(filepath) {
-		if _, err := b.fs.Open(p); err != nil {
+		if _, err := b.fs.Open(setDefault(p)); err != nil {
 			return false
 		}
 		return true
@@ -25,9 +29,19 @@ func (b *binaryFileSystem) Exists(prefix string, filepath string) bool {
 	return false
 }
 
-func BinaryFileSystem(root string) *binaryFileSystem {
-	fs := &assetfs.AssetFS{Asset: Asset, AssetDir: AssetDir, AssetInfo: AssetInfo, Prefix: root, Fallback: "index.html"}
-	return &binaryFileSystem{
-		fs,
+func setDefault(path string) string {
+	if len(path) == 0 {
+		return "/index.html"
+	}
+	return path
+}
+
+func EmbeddedFileSystem(targetPath string) *embeddedFileSystem {
+	fsys, err := fs.Sub(web, targetPath)
+	if err != nil {
+		panic(err)
+	}
+	return &embeddedFileSystem{
+		http.FS(fsys),
 	}
 }

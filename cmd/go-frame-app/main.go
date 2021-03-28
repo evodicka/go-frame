@@ -10,8 +10,6 @@ import (
 	"os"
 )
 
-//go:generate go-bindata-assetfs -o web-assets.go ../../web/dist/...
-
 var (
 	WarningLogger *log.Logger
 	InfoLogger    *log.Logger
@@ -32,7 +30,7 @@ func main() {
 	apiEndpoint := router.Group("/api")
 	adminEndpoint := router.Group("/admin/api")
 	router.Use(static.ServeRoot("/static/images", "images"))
-	router.Use(static.Serve("/", BinaryFileSystem("../../web/dist")))
+	router.Use(static.Serve("/", EmbeddedFileSystem("web")))
 
 	api.RegisterApiEndpoint(apiEndpoint)
 	adminapi.RegisterApiEndpoint(adminEndpoint)
