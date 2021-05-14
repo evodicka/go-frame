@@ -38,6 +38,10 @@ func initBuckets() {
 	if err != nil {
 		ErrorLogger.Fatal(err)
 	}
+	err = Db.Update(initConfigBucket)
+	if err != nil {
+		ErrorLogger.Fatal(err)
+	}
 }
 
 func Close() error {

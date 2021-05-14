@@ -33,7 +33,6 @@ func prepopulateStatus(statusBucket *bolt.Bucket) error {
 	var status = Status{
 		CurrentImageId: -1,
 		LastSwitch:     time.Unix(0, 0),
-		ImageDuration:  300,
 	}
 	statusBytes, _ := json.Marshal(status)
 	return statusBucket.Put([]byte(CurrentStatusKey), statusBytes)

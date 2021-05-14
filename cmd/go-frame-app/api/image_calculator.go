@@ -31,8 +31,13 @@ func calculateCurrentImage() (path string, err error) {
 		ErrorLogger.Println("Cannot read current status")
 		return "", err
 	}
+	config, err := persistence.GetConfiguration()
+	if err != nil {
+		ErrorLogger.Println("Cannot read configuration")
+		return "", err
+	}
 	var image persistence.Image
-	if time.Since(status.LastSwitch).Seconds() > float64(status.ImageDuration) {
+	if time.Since(status.LastSwitch).Seconds() > float64(config.ImageDuration) {
 		image, err = persistence.LoadNextImage(status.CurrentImageId)
 		if err == nil {
 			err = persistence.UpdateImageStatus(image.Id)
