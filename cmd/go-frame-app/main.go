@@ -1,13 +1,14 @@
 package main
 
 import (
+	"log"
+	"os"
+
 	"github.com/gin-gonic/gin"
 	adminapi "go.evodicka.dev/go-frame/cmd/go-frame-app/admin-api"
 	"go.evodicka.dev/go-frame/cmd/go-frame-app/api"
 	"go.evodicka.dev/go-frame/cmd/go-frame-app/persistence"
 	"go.evodicka.dev/go-frame/cmd/go-frame-app/static"
-	"log"
-	"os"
 )
 
 var (
@@ -32,10 +33,17 @@ func main() {
 	router.Use(static.ServeRoot("/static/images", "images"))
 	router.Use(static.Serve("/", EmbeddedFileSystem("web")))
 
-	api.RegisterApiEndpoint(apiEndpoint)
-	adminapi.RegisterApiEndpoint(adminEndpoint)
+	storage, err := persistence.NewStorage("my.db")
+	if err != nil {
+		ErrorLogger.Fatal(err)
+	}
+	defer storage.Close()
+
+	apiHandler := api.NewHandler(storage)
+	adminHandler := adminapi.NewHandler(storage)
+
+	apiHandler.RegisterApiEndpoint(apiEndpoint)
+	adminHandler.RegisterApiEndpoint(adminEndpoint)
 
 	router.Run(":8080")
-
-	defer persistence.Close()
 }

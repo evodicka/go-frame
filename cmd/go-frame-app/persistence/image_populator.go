@@ -39,7 +39,7 @@ func persistImagesFromDir(metadataBucket *bolt.Bucket) ([]int, error) {
 		if err != nil {
 			return nil, err
 		}
-		image := Image{
+		image := model.Image{
 			Id:   int(sequence),
 			Path: imageInfo.Name(),
 			Type: model.ImageType,

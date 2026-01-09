@@ -4,15 +4,8 @@ import (
 	"encoding/json"
 
 	bolt "go.etcd.io/bbolt"
+	"go.evodicka.dev/go-frame/cmd/go-frame-app/model"
 )
-
-// Config represents the application configuration stored in the database.
-type Config struct {
-	// ImageDuration is the time in seconds each image is displayed.
-	ImageDuration int
-	// RandomOrder toggles random image shuffling.
-	RandomOrder bool
-}
 
 const (
 	// ConfigKey is the key, used to store the configuration object in the database.
@@ -33,7 +26,7 @@ func initConfigBucket(tx *bolt.Tx) error {
 }
 
 func prepopulateConfiguration(bucket *bolt.Bucket) error {
-	var config = Config{
+	var config = model.Config{
 		ImageDuration: 60,
 		RandomOrder:   false,
 	}
@@ -46,9 +39,9 @@ func prepopulateConfiguration(bucket *bolt.Bucket) error {
 // Returns:
 //   - Config: The current configuration object.
 //   - error: An error if retrieval fails.
-func GetConfiguration() (Config, error) {
-	var config Config
-	err := Db.View(func(tx *bolt.Tx) error {
+func (s *Storage) GetConfiguration() (model.Config, error) {
+	var config model.Config
+	err := s.Db.View(func(tx *bolt.Tx) error {
 		configBucket := tx.Bucket(configBucketName)
 		configBytes := configBucket.Get([]byte(ConfigKey))
 		return json.Unmarshal(configBytes, &config)
@@ -63,8 +56,8 @@ func GetConfiguration() (Config, error) {
 //
 // Returns:
 //   - error: An error if the update fails.
-func UpdateConfiguration(config Config) error {
-	return Db.Update(func(tx *bolt.Tx) error {
+func (s *Storage) UpdateConfiguration(config model.Config) error {
+	return s.Db.Update(func(tx *bolt.Tx) error {
 		configBucket := tx.Bucket(configBucketName)
 		conigBytes, _ := json.Marshal(config)
 		return configBucket.Put([]byte(ConfigKey), conigBytes)

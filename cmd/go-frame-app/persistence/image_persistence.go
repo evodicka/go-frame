@@ -10,18 +10,6 @@ import (
 	"go.evodicka.dev/go-frame/cmd/go-frame-app/model"
 )
 
-// Image represents the metadata of an image stored in the database.
-type Image struct {
-	// Id is the unique identifier of the image.
-	Id int
-	// Path is the filename of the image.
-	Path string
-	// Type indicates the media type (e.g. IMAGE).
-	Type model.Type
-	// Metadata contains additional info about the image.
-	Metadata string
-}
-
 const (
 	// ImageDir is the directory where image files are stored on disk.
 	ImageDir string = "images"
@@ -51,9 +39,9 @@ func initImageBuckets(tx *bolt.Tx) error {
 // Returns:
 //   - []Image: A slice of Image objects.
 //   - error: An error if the database read fails.
-func LoadImages() ([]Image, error) {
-	var images []Image
-	err := Db.View(func(tx *bolt.Tx) error {
+func (s *Storage) LoadImages() ([]model.Image, error) {
+	var images []model.Image
+	err := s.Db.View(func(tx *bolt.Tx) error {
 		orderBucket := tx.Bucket(orderBucketName)
 		metadataBucket := tx.Bucket(metadataBucketName)
 
@@ -77,9 +65,9 @@ func LoadImages() ([]Image, error) {
 // Returns:
 //   - Image: The requested Image object.
 //   - error: An error if the image is not found or database read fails.
-func LoadImage(id int) (Image, error) {
-	var image Image
-	err := Db.View(func(tx *bolt.Tx) error {
+func (s *Storage) LoadImage(id int) (model.Image, error) {
+	var image model.Image
+	err := s.Db.View(func(tx *bolt.Tx) error {
 		metadataBucket := tx.Bucket(metadataBucketName)
 		returnedImage, err := loadImageByByteId(itob(id), metadataBucket)
 		image = returnedImage
@@ -97,15 +85,22 @@ func LoadImage(id int) (Image, error) {
 // Returns:
 //   - Image: The next Image object to display.
 //   - error: An error if the next image cannot be determined or loaded.
-func LoadNextImage(id int) (Image, error) {
-	var image Image
-	err := Db.View(func(tx *bolt.Tx) error {
+func (s *Storage) LoadNextImage(id int) (model.Image, error) {
+	var image model.Image
+	err := s.Db.View(func(tx *bolt.Tx) error {
 		orderBucket := tx.Bucket(orderBucketName)
 		metadataBucket := tx.Bucket(metadataBucketName)
 		cursor := orderBucket.Cursor()
 		if id < 0 {
 			_, value := cursor.First()
-			image, _ = loadImageByByteId(value, metadataBucket)
+			if value == nil {
+				return errors.New("No images found")
+			}
+			img, err := loadImageByByteId(value, metadataBucket)
+			if err != nil {
+				return err
+			}
+			image = img
 		} else {
 			for key, value := cursor.First(); key != nil; key, value = cursor.Next() {
 				if bytes.Equal(value, itob(id)) {
@@ -124,18 +119,18 @@ func LoadNextImage(id int) (Image, error) {
 
 }
 
-func loadImageByByteId(id []byte, metadataBucket *bolt.Bucket) (Image, error) {
+func loadImageByByteId(id []byte, metadataBucket *bolt.Bucket) (model.Image, error) {
 	image := metadataBucket.Get(id)
 	if image != nil {
-		var imageStruct Image
+		var imageStruct model.Image
 		err := json.Unmarshal(image, &imageStruct)
 		if err != nil {
-			return Image{}, err
+			return model.Image{}, err
 		} else {
 			return imageStruct, nil
 		}
 	}
-	return Image{}, errors.New("Image not found")
+	return model.Image{}, errors.New("Image not found")
 }
 
 // ReorderImages updates the display order of images in the database.
@@ -145,12 +140,12 @@ func loadImageByByteId(id []byte, metadataBucket *bolt.Bucket) (Image, error) {
 //
 // Returns:
 //   - error: An error if the database update fails.
-func ReorderImages(images []Image) error {
+func (s *Storage) ReorderImages(images []model.Image) error {
 	var sequences []int
 	for _, image := range images {
 		sequences = append(sequences, image.Id)
 	}
-	return Db.Update(func(tx *bolt.Tx) error {
+	return s.Db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(orderBucketName)
 		return persistImageOrder(bucket, sequences)
 	})
@@ -177,14 +172,14 @@ func persistImageOrder(orderBucket *bolt.Bucket, sequences []int) error {
 //
 // Returns:
 //   - error: An error if the image is not found or deletion fails.
-func DeleteImage(id int) error {
-	return Db.Update(func(tx *bolt.Tx) error {
+func (s *Storage) DeleteImage(id int) error {
+	return s.Db.Update(func(tx *bolt.Tx) error {
 		metadataBucket := tx.Bucket(metadataBucketName)
 		metadata := metadataBucket.Get(itob(id))
 		if metadata == nil {
 			return errors.New("Image not found")
 		}
-		var image Image
+		var image model.Image
 		if err := json.Unmarshal(metadata, &image); err != nil {
 			return err
 		}
@@ -208,9 +203,9 @@ func deleteImageOnDisk(path string) error {
 // Returns:
 //   - Image: The created Image object with assigned ID.
 //   - error: An error if the database/metadata update fails.
-func SaveImageMetadata(name string) (Image, error) {
-	var image Image
-	err := Db.Update(func(tx *bolt.Tx) error {
+func (s *Storage) SaveImageMetadata(name string) (model.Image, error) {
+	var image model.Image
+	err := s.Db.Update(func(tx *bolt.Tx) error {
 		orderBucket := tx.Bucket(orderBucketName)
 		metadataBucket := tx.Bucket(metadataBucketName)
 
@@ -218,7 +213,7 @@ func SaveImageMetadata(name string) (Image, error) {
 		if err != nil {
 			return err
 		}
-		image = Image{
+		image = model.Image{
 			Id:       int(sequence),
 			Path:     name,
 			Type:     model.ImageType,
