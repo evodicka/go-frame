@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"go.evodicka.dev/go-frame/cmd/go-frame-app/persistence"
+	"go.evodicka.dev/go-frame/cmd/go-frame-app/model"
 )
 
 // ConfigRef represents the configuration data structure for the API.
@@ -15,8 +15,8 @@ type ConfigRef struct {
 	RandomOrder bool `json:"randomOrder"`
 }
 
-func loadConfiguration(context *gin.Context) {
-	loadedConfig, err := persistence.GetConfiguration()
+func (h *Handler) loadConfiguration(context *gin.Context) {
+	loadedConfig, err := h.storage.GetConfiguration()
 	if err != nil {
 		context.AbortWithError(http.StatusInternalServerError, err)
 		return
@@ -28,7 +28,7 @@ func loadConfiguration(context *gin.Context) {
 	context.JSON(http.StatusOK, config)
 }
 
-func updateConfiguration(context *gin.Context) {
+func (h *Handler) updateConfiguration(context *gin.Context) {
 	var config ConfigRef
 	if err := context.ShouldBindJSON(&config); err != nil {
 		context.AbortWithStatus(http.StatusBadRequest)
@@ -40,15 +40,15 @@ func updateConfiguration(context *gin.Context) {
 		return
 	}
 
-	var dbConfig = persistence.Config{
+	var dbConfig = model.Config{
 		ImageDuration: config.ImageDuration,
 		RandomOrder:   config.RandomOrder,
 	}
 
-	if err := persistence.UpdateConfiguration(dbConfig); err != nil {
+	if err := h.storage.UpdateConfiguration(dbConfig); err != nil {
 		context.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
-	loadConfiguration(context)
+	h.loadConfiguration(context)
 }

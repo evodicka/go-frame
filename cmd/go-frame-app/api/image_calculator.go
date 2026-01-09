@@ -6,7 +6,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.evodicka.dev/go-frame/cmd/go-frame-app/model"
-	"go.evodicka.dev/go-frame/cmd/go-frame-app/persistence"
 )
 
 // ImageRef represents a reference to an image or content to be displayed.
@@ -19,8 +18,8 @@ type ImageRef struct {
 	Metadata string `json:"metadata"`
 }
 
-func getCurrentImageData(context *gin.Context) {
-	fileName, err := calculateCurrentImage()
+func (h *Handler) getCurrentImageData(context *gin.Context) {
+	fileName, err := h.calculateCurrentImage()
 	if err != nil {
 		context.AbortWithError(http.StatusInternalServerError, err)
 		return
@@ -30,25 +29,26 @@ func getCurrentImageData(context *gin.Context) {
 	context.JSON(http.StatusOK, ref)
 }
 
-func calculateCurrentImage() (path string, err error) {
-	status, err := persistence.GetCurrentStatus()
+func (h *Handler) calculateCurrentImage() (path string, err error) {
+	status, err := h.storage.GetCurrentStatus()
 	if err != nil {
 		ErrorLogger.Println("Cannot read current status")
 		return "", err
 	}
-	config, err := persistence.GetConfiguration()
+	config, err := h.storage.GetConfiguration()
 	if err != nil {
 		ErrorLogger.Println("Cannot read configuration")
 		return "", err
 	}
-	var image persistence.Image
+	var image model.Image
 	if time.Since(status.LastSwitch).Seconds() > float64(config.ImageDuration) {
-		image, err = persistence.LoadNextImage(status.CurrentImageId)
+		image, err = h.storage.LoadNextImage(status.CurrentImageId)
 		if err == nil {
-			err = persistence.UpdateImageStatus(image.Id)
+			// Update status with new image ID
+			err = h.storage.UpdateImageStatus(image.Id)
 		}
 	} else {
-		image, err = persistence.LoadImage(status.CurrentImageId)
+		image, err = h.storage.LoadImage(status.CurrentImageId)
 	}
 	if err != nil {
 		ErrorLogger.Println("Cannot read Image")

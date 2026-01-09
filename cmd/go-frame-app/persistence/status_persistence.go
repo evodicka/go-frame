@@ -5,17 +5,8 @@ import (
 	"time"
 
 	bolt "go.etcd.io/bbolt"
+	"go.evodicka.dev/go-frame/cmd/go-frame-app/model"
 )
-
-// Status represents the runtime status of the frame (current image, last switch time).
-type Status struct {
-	// CurrentImageId is the ID of the currently displayed image.
-	CurrentImageId int
-	// LastSwitch is the timestamp when the image was last switched.
-	LastSwitch time.Time
-	// ImageDuration is legacy/unused field? (based on usage it seems unused in update, only loaded).
-	ImageDuration int
-}
 
 const (
 	// CurrentStatusKey is the key used to store the status object in the database.
@@ -36,7 +27,7 @@ func initStatusBuckets(tx *bolt.Tx) error {
 }
 
 func prepopulateStatus(statusBucket *bolt.Bucket) error {
-	var status = Status{
+	var status = model.Status{
 		CurrentImageId: -1,
 		LastSwitch:     time.Unix(0, 0),
 	}
@@ -49,9 +40,9 @@ func prepopulateStatus(statusBucket *bolt.Bucket) error {
 // Returns:
 //   - Status: The current status object.
 //   - error: An error if retrieval fails.
-func GetCurrentStatus() (Status, error) {
-	var status Status
-	err := Db.View(func(tx *bolt.Tx) error {
+func (s *Storage) GetCurrentStatus() (model.Status, error) {
+	var status model.Status
+	err := s.Db.View(func(tx *bolt.Tx) error {
 		statusBucket := tx.Bucket(statusBucketName)
 		statusBytes := statusBucket.Get([]byte(CurrentStatusKey))
 		return json.Unmarshal(statusBytes, &status)
@@ -66,11 +57,11 @@ func GetCurrentStatus() (Status, error) {
 //
 // Returns:
 //   - error: An error if the status update fails.
-func UpdateImageStatus(newId int) error {
-	return Db.Update(func(tx *bolt.Tx) error {
+func (s *Storage) UpdateImageStatus(newId int) error {
+	return s.Db.Update(func(tx *bolt.Tx) error {
 		statusBucket := tx.Bucket(statusBucketName)
 		statusBytes := statusBucket.Get([]byte(CurrentStatusKey))
-		var status Status
+		var status model.Status
 		if err := json.Unmarshal(statusBytes, &status); err != nil {
 			return err
 		}

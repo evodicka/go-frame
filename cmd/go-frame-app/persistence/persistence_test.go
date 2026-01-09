@@ -2,61 +2,41 @@ package persistence_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
-	bolt "go.etcd.io/bbolt"
 	"go.evodicka.dev/go-frame/cmd/go-frame-app/model"
 	"go.evodicka.dev/go-frame/cmd/go-frame-app/persistence"
 )
 
-const tempDbName = "test_persistence.db"
-
-func TestMain(m *testing.M) {
-	// Setup
-	os.Mkdir("images", 0755)
-
-	db, err := bolt.Open(tempDbName, 0600, nil)
-	if err != nil {
-		panic(err)
-	}
-	persistence.Db = db
-
-	// Run tests
-	code := m.Run()
-
-	// Teardown
-	db.Close()
-	os.RemoveAll("images")
-	os.Remove(tempDbName)
-	os.Exit(code)
-}
-
-func setupTestDB() error {
+func setupTestDB(t *testing.T) *persistence.Storage {
 	// Create images dir required for InitBuckets -> prepopulateImages
+	// prepopulate uses "images" directory relative to CWD.
+	// We might need to ensure CWD is correct or mock it?
+	// For simplicity, we create "images" in CWD.
 	_ = os.MkdirAll("images", 0755)
 
-	// Clear existing buckets to ensure clean state
-	err := persistence.Db.Update(func(tx *bolt.Tx) error {
-		tx.DeleteBucket([]byte("images"))
-		tx.DeleteBucket([]byte("order"))
-		tx.DeleteBucket([]byte("configuration"))
-		tx.DeleteBucket([]byte("status"))
-		return nil
-	})
+	dbPath := filepath.Join(t.TempDir(), "test_persistence.db")
+	storage, err := persistence.NewStorage(dbPath)
 	if err != nil {
-		// Ignore error if buckets don't exist
+		t.Fatalf("Failed to open test DB: %v", err)
 	}
-	// Re-init buckets
-	persistence.InitBuckets()
-	return nil
+
+	// Cleanup
+	t.Cleanup(func() {
+		storage.Close()
+		os.RemoveAll("images")
+	})
+
+	return storage
 }
 
 func TestImageCRUD(t *testing.T) {
-	setupTestDB()
+	storage := setupTestDB(t)
 
 	// Test Save
-	img, err := persistence.SaveImageMetadata("test_image.jpg")
+	img, err := storage.SaveImageMetadata("test_image.jpg")
 	if err != nil {
 		t.Fatalf("Failed to save image: %v", err)
 	}
@@ -68,7 +48,7 @@ func TestImageCRUD(t *testing.T) {
 	}
 
 	// Test Load
-	loadedImg, err := persistence.LoadImage(img.Id)
+	loadedImg, err := storage.LoadImage(img.Id)
 	if err != nil {
 		t.Fatalf("Failed to load image: %v", err)
 	}
@@ -77,7 +57,7 @@ func TestImageCRUD(t *testing.T) {
 	}
 
 	// Test LoadAll
-	images, err := persistence.LoadImages()
+	images, err := storage.LoadImages()
 	if err != nil {
 		t.Fatalf("Failed to load images: %v", err)
 	}
@@ -92,22 +72,22 @@ func TestImageCRUD(t *testing.T) {
 	f.Close()
 	defer os.RemoveAll("images")
 
-	err = persistence.DeleteImage(img.Id)
+	err = storage.DeleteImage(img.Id)
 	if err != nil {
 		t.Fatalf("Failed to delete image: %v", err)
 	}
 
-	_, err = persistence.LoadImage(img.Id)
+	_, err = storage.LoadImage(img.Id)
 	if err == nil {
 		t.Error("Expected error loading deleted image, got nil")
 	}
 }
 
 func TestConfigPersistence(t *testing.T) {
-	setupTestDB()
+	storage := setupTestDB(t)
 
 	// Initial config should use defaults if prepopulated, check prepopulate logic
-	config, err := persistence.GetConfiguration()
+	config, err := storage.GetConfiguration()
 	if err != nil {
 		t.Fatalf("Failed to get config: %v", err)
 	}
@@ -117,16 +97,16 @@ func TestConfigPersistence(t *testing.T) {
 	}
 
 	// Update
-	newConfig := persistence.Config{
+	newConfig := model.Config{
 		ImageDuration: 120,
 		RandomOrder:   true,
 	}
-	err = persistence.UpdateConfiguration(newConfig)
+	err = storage.UpdateConfiguration(newConfig)
 	if err != nil {
 		t.Fatalf("Failed to update config: %v", err)
 	}
 
-	updatedConfig, err := persistence.GetConfiguration()
+	updatedConfig, err := storage.GetConfiguration()
 	if err != nil {
 		t.Fatalf("Failed to get updated config: %v", err)
 	}
@@ -136,21 +116,21 @@ func TestConfigPersistence(t *testing.T) {
 }
 
 func TestStatusPersistence(t *testing.T) {
-	setupTestDB()
+	storage := setupTestDB(t)
 
 	// Get initial status
-	_, err := persistence.GetCurrentStatus()
+	_, err := storage.GetCurrentStatus()
 	if err != nil {
 		t.Fatalf("Failed to get status: %v", err)
 	}
 
 	// Update status
-	err = persistence.UpdateImageStatus(10)
+	err = storage.UpdateImageStatus(10)
 	if err != nil {
 		t.Fatalf("Failed to update status: %v", err)
 	}
 
-	updatedStatus, err := persistence.GetCurrentStatus()
+	updatedStatus, err := storage.GetCurrentStatus()
 
 	if err != nil {
 		t.Fatalf("Failed to get updated status: %v", err)
@@ -164,17 +144,17 @@ func TestStatusPersistence(t *testing.T) {
 }
 
 func TestLoadNextImage(t *testing.T) {
-	setupTestDB()
+	storage := setupTestDB(t)
 
 	// Create 3 images
-	img1, _ := persistence.SaveImageMetadata("img1.jpg")
-	img2, _ := persistence.SaveImageMetadata("img2.jpg")
-	img3, _ := persistence.SaveImageMetadata("img3.jpg")
+	img1, _ := storage.SaveImageMetadata("img1.jpg")
+	img2, _ := storage.SaveImageMetadata("img2.jpg")
+	img3, _ := storage.SaveImageMetadata("img3.jpg")
 
 	// Order: img1, img2, img3 (default order is creation order based on sequences)
 
 	// Next of img1 should be img2
-	next, err := persistence.LoadNextImage(img1.Id)
+	next, err := storage.LoadNextImage(img1.Id)
 	if err != nil {
 		t.Fatalf("LoadNextImage failed: %v", err)
 	}
@@ -183,7 +163,7 @@ func TestLoadNextImage(t *testing.T) {
 	}
 
 	// Next of img3 (last) should be img1 (loop)
-	next, err = persistence.LoadNextImage(img3.Id)
+	next, err = storage.LoadNextImage(img3.Id)
 	if err != nil {
 		t.Fatalf("LoadNextImage failed: %v", err)
 	}
@@ -192,13 +172,13 @@ func TestLoadNextImage(t *testing.T) {
 	}
 
 	// Test Reorder
-	err = persistence.ReorderImages([]persistence.Image{img3, img2, img1})
+	err = storage.ReorderImages([]model.Image{img3, img2, img1})
 	if err != nil {
 		t.Fatalf("Reorder failed: %v", err)
 	}
 
 	// Now order: img3, img2, img1
-	next, err = persistence.LoadNextImage(img3.Id)
+	next, err = storage.LoadNextImage(img3.Id)
 	if err != nil {
 		t.Fatalf("LoadNextImage failed: %v", err)
 	}

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -14,48 +15,28 @@ import (
 	"go.evodicka.dev/go-frame/cmd/go-frame-app/persistence"
 )
 
-func TestMain(m *testing.M) {
-	// Setup environment for persistence init
-	os.Mkdir("images", 0755)
+func setupTestDB(t *testing.T) *persistence.Storage {
+	_ = os.MkdirAll("images", 0755)
 
-	// Open DB if not already open (persistence init might have done it)
-	// Actually persistence.init() runs and opens "my.db" in CWD.
-
-	code := m.Run()
-
-	// Teardown
-	if persistence.Db != nil {
-		persistence.Db.Close()
+	dbPath := filepath.Join(t.TempDir(), "test_api.db")
+	storage, err := persistence.NewStorage(dbPath)
+	if err != nil {
+		t.Fatalf("Failed to open test DB: %v", err)
 	}
-	os.Remove("my.db") // Created by persistence init
-	os.RemoveAll("images")
-	os.Exit(code)
-}
 
-func clearDB() {
-	persistence.Db.Update(func(tx *bolt.Tx) error {
-		tx.DeleteBucket([]byte("images"))
-		tx.DeleteBucket([]byte("order"))
-		tx.DeleteBucket([]byte("status"))
-		// Don't delete config, or re-init it?
-		// persistence initBuckets handles creation if not exists.
-		// But we can't call initBuckets.
-		// So better to just clear keys if we want, or use unique IDs.
-		return nil
+	// Helper to clear DB if needed or just return fresh one.
+	// Since we use TempDir, we get fresh one each time setupTestDB is called if we call it per test.
+
+	t.Cleanup(func() {
+		storage.Close()
+		os.RemoveAll("images")
 	})
-	// Re-create buckets if deleted (helper since we can't call InitBuckets)
-	persistence.Db.Update(func(tx *bolt.Tx) error {
-		_, _ = tx.CreateBucketIfNotExists([]byte("images"))
-		_, _ = tx.CreateBucketIfNotExists([]byte("order"))
-		_, _ = tx.CreateBucketIfNotExists([]byte("status"))
-		// Status needs pre-population for GetCurrentStatus to work without error?
-		// GetCurrentStatus -> json.Unmarshal(nil) returns error?
-		// persistence.GetCurrentStatus calls Get([]byte("status")).
-		// If empty, returns nil. Unmarshal(nil) returns error.
-		// So we must prepopulate status.
-		b := tx.Bucket([]byte("status"))
+
+	// Prepopulate status for tests
+	err = storage.Db.Update(func(tx *bolt.Tx) error {
+		b, _ := tx.CreateBucketIfNotExists([]byte("status"))
 		if b.Get([]byte("status")) == nil {
-			status := persistence.Status{
+			status := model.Status{
 				CurrentImageId: -1,
 				LastSwitch:     time.Unix(0, 0),
 			}
@@ -63,28 +44,27 @@ func clearDB() {
 			b.Put([]byte("status"), bytes)
 		}
 
-		// Config same
-		b = tx.Bucket([]byte("configuration")) // Name is "configuration" ?
-		// config_persistence.go says: configBucketName = []byte("configuration")
-		if b == nil {
-			b, _ = tx.CreateBucketIfNotExists([]byte("configuration"))
-		}
-		if b.Get([]byte("config")) == nil {
-			config := persistence.Config{ImageDuration: 60, RandomOrder: false}
+		kb, _ := tx.CreateBucketIfNotExists([]byte("configuration"))
+		if kb.Get([]byte("config")) == nil {
+			config := model.Config{ImageDuration: 60, RandomOrder: false}
 			bytes, _ := json.Marshal(config)
-			b.Put([]byte("config"), bytes)
+			kb.Put([]byte("config"), bytes)
 		}
-
 		return nil
 	})
+	if err != nil {
+		t.Fatalf("Failed to prepopulate DB: %v", err)
+	}
+
+	return storage
 }
 
 func TestCalculateCurrentImage(t *testing.T) {
-	clearDB()
+	storage := setupTestDB(t)
+	handler := NewHandler(storage)
 
 	// 1. Initial state, no images.
-	// NOTE: Current implementation returns empty path and nil error when no images exist.
-	path, err := calculateCurrentImage()
+	path, err := handler.calculateCurrentImage()
 	if err != nil {
 		// If it errors, that's acceptable too in case of fix, but currently it doesn't.
 	}
@@ -92,17 +72,14 @@ func TestCalculateCurrentImage(t *testing.T) {
 		t.Errorf("Expected empty path when no images, got %s", path)
 	}
 
-	// Reset DB because empty CalculateCurrentImage() calls UpdateImageStatus(0), setting bad state.
-	clearDB()
-
 	// 2. Add an image
-	img1, err := persistence.SaveImageMetadata("img1.jpg")
+	img1, err := storage.SaveImageMetadata("img1.jpg")
 	if err != nil {
 		t.Fatalf("Failed to save image: %v", err)
 	}
 
 	// 3. Current ID is -1 (from reset status), so should load first image
-	path, err = calculateCurrentImage()
+	path, err = handler.calculateCurrentImage()
 	if err != nil {
 		t.Fatalf("calculateCurrentImage failed: %v", err)
 	}
@@ -111,16 +88,16 @@ func TestCalculateCurrentImage(t *testing.T) {
 	}
 
 	// 4. Verify status updated
-	status, _ := persistence.GetCurrentStatus()
+	status, _ := storage.GetCurrentStatus()
 	if status.CurrentImageId != img1.Id {
 		t.Errorf("Expected status ID %d, got %d", img1.Id, status.CurrentImageId)
 	}
 
 	// 5. Add second image
-	_, _ = persistence.SaveImageMetadata("img2.jpg")
+	_, _ = storage.SaveImageMetadata("img2.jpg")
 
 	// 6. Call again immediately. Duration is 60s. Should still be img1.
-	path, err = calculateCurrentImage()
+	path, err = handler.calculateCurrentImage()
 	if err != nil {
 		t.Fatalf("calculateCurrentImage failed: %v", err)
 	}
@@ -129,11 +106,11 @@ func TestCalculateCurrentImage(t *testing.T) {
 	}
 
 	// 7. Manipulate LastSwitch to force switch
-	persistence.UpdateImageStatus(img1.Id) // Resets time to Now
+	storage.UpdateImageStatus(img1.Id) // Resets time to Now
 	// Use explicit DB update to set timeback
-	persistence.Db.Update(func(tx *bolt.Tx) error {
+	storage.Db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("status"))
-		status := persistence.Status{
+		status := model.Status{
 			CurrentImageId: img1.Id,
 			LastSwitch:     time.Now().Add(-61 * time.Second),
 		}
@@ -141,7 +118,7 @@ func TestCalculateCurrentImage(t *testing.T) {
 		return b.Put([]byte("status"), bytes)
 	})
 
-	path, err = calculateCurrentImage()
+	path, err = handler.calculateCurrentImage()
 	if err != nil {
 		t.Fatalf("calculateCurrentImage failed: %v", err)
 	}
@@ -151,15 +128,22 @@ func TestCalculateCurrentImage(t *testing.T) {
 }
 
 func TestGetCurrentImageData(t *testing.T) {
-	clearDB()
-	persistence.SaveImageMetadata("test.jpg")
+	storage := setupTestDB(t)
+	storage.SaveImageMetadata("test.jpg")
+
+	handler := NewHandler(storage)
 
 	// Setup Gin
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.GET("/current-image", getCurrentImageData)
+	handler.RegisterApiEndpoint(r.Group("/"))
+	// RegisterApiEndpoint registers /image/current on the group.
+	// if group is /, then /image/current.
 
-	req, _ := http.NewRequest("GET", "/current-image", nil)
+	// Wait, RegisterApiEndpoint calls router.GET("/image/current", ...)
+	// So we request /image/current
+
+	req, _ := http.NewRequest("GET", "/image/current", nil)
 	w := httptest.NewRecorder()
 
 	r.ServeHTTP(w, req)

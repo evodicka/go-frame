@@ -22,10 +22,10 @@ type ImageRef struct {
 	Metadata string `json:"metadata"`
 }
 
-func loadAllImageData(context *gin.Context) {
+func (h *Handler) loadAllImageData(context *gin.Context) {
 	var images []ImageRef
 
-	loadedImages, err := persistence.LoadImages()
+	loadedImages, err := h.storage.LoadImages()
 	if err != nil {
 		context.AbortWithError(http.StatusInternalServerError, err)
 		return
@@ -43,16 +43,16 @@ func loadAllImageData(context *gin.Context) {
 	context.JSON(http.StatusOK, images)
 }
 
-func updateImageOrder(context *gin.Context) {
+func (h *Handler) updateImageOrder(context *gin.Context) {
 	var images []ImageRef
 	if err := context.ShouldBindJSON(&images); err != nil {
 		context.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
-	var dbImages []persistence.Image
+	var dbImages []model.Image
 	for _, image := range images {
-		var dbImage = persistence.Image{
+		var dbImage = model.Image{
 			Id:       image.Id,
 			Path:     image.Path,
 			Type:     image.Type,
@@ -60,22 +60,22 @@ func updateImageOrder(context *gin.Context) {
 		}
 		dbImages = append(dbImages, dbImage)
 	}
-	if err := persistence.ReorderImages(dbImages); err != nil {
+	if err := h.storage.ReorderImages(dbImages); err != nil {
 		context.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
-	loadAllImageData(context)
+	h.loadAllImageData(context)
 }
 
-func deleteImage(context *gin.Context) {
+func (h *Handler) deleteImage(context *gin.Context) {
 	id := context.Param("id")
 	intId, err := strconv.Atoi(id)
 	if err != nil {
 		context.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
-	err = persistence.DeleteImage(intId)
+	err = h.storage.DeleteImage(intId)
 	if err != nil {
 		context.AbortWithError(http.StatusInternalServerError, err)
 		return
@@ -83,7 +83,7 @@ func deleteImage(context *gin.Context) {
 	context.Status(http.StatusOK)
 }
 
-func addImage(context *gin.Context) {
+func (h *Handler) addImage(context *gin.Context) {
 	form, err := context.FormFile("image")
 	if err != nil || form == nil {
 		context.AbortWithStatus(http.StatusBadRequest)
@@ -95,7 +95,7 @@ func addImage(context *gin.Context) {
 		return
 	}
 
-	loadedImage, err := persistence.SaveImageMetadata(form.Filename)
+	loadedImage, err := h.storage.SaveImageMetadata(form.Filename)
 	if err != nil {
 		context.AbortWithError(http.StatusInternalServerError, err)
 		return
