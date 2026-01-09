@@ -36,6 +36,15 @@ func setDefault(path string) string {
 	return path
 }
 
+// EmbeddedFileSystem returns a http.FileSystem that serves files from the embedded "web" directory.
+// It is designed to work with Single Page Applications (SPA) by serving index.html for unknown paths
+// (Client-side routing support).
+//
+// Parameters:
+//   - targetPath: The subdirectory within the embedded FS to root the file system at.
+//
+// Returns:
+//   - *embeddedFileSystem: A pointer to the struct implementing http.FileSystem with specific SPA logic.
 func EmbeddedFileSystem(targetPath string) *embeddedFileSystem {
 	fsys, err := fs.Sub(web, targetPath)
 	if err != nil {

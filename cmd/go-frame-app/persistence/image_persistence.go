@@ -4,19 +4,26 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"os"
+
 	bolt "go.etcd.io/bbolt"
 	"go.evodicka.dev/go-frame/cmd/go-frame-app/model"
-	"os"
 )
 
+// Image represents the metadata of an image stored in the database.
 type Image struct {
-	Id       int
-	Path     string
-	Type     model.Type
+	// Id is the unique identifier of the image.
+	Id int
+	// Path is the filename of the image.
+	Path string
+	// Type indicates the media type (e.g. IMAGE).
+	Type model.Type
+	// Metadata contains additional info about the image.
 	Metadata string
 }
 
 const (
+	// ImageDir is the directory where image files are stored on disk.
 	ImageDir string = "images"
 )
 
@@ -39,6 +46,11 @@ func initImageBuckets(tx *bolt.Tx) error {
 	return err
 }
 
+// LoadImages retrieves all images from the database, ordered by their sequence.
+//
+// Returns:
+//   - []Image: A slice of Image objects.
+//   - error: An error if the database read fails.
 func LoadImages() ([]Image, error) {
 	var images []Image
 	err := Db.View(func(tx *bolt.Tx) error {
@@ -57,6 +69,14 @@ func LoadImages() ([]Image, error) {
 	return images, err
 }
 
+// LoadImage retrieves a specific image by its ID.
+//
+// Parameters:
+//   - id: The ID of the image to retrieve.
+//
+// Returns:
+//   - Image: The requested Image object.
+//   - error: An error if the image is not found or database read fails.
 func LoadImage(id int) (Image, error) {
 	var image Image
 	err := Db.View(func(tx *bolt.Tx) error {
@@ -68,6 +88,15 @@ func LoadImage(id int) (Image, error) {
 	return image, err
 }
 
+// LoadNextImage determines and retrieves the next image to be displayed based on the current image ID.
+// It cycles through the images in the defined order.
+//
+// Parameters:
+//   - id: The ID of the currently displayed image.
+//
+// Returns:
+//   - Image: The next Image object to display.
+//   - error: An error if the next image cannot be determined or loaded.
 func LoadNextImage(id int) (Image, error) {
 	var image Image
 	err := Db.View(func(tx *bolt.Tx) error {
@@ -109,6 +138,13 @@ func loadImageByByteId(id []byte, metadataBucket *bolt.Bucket) (Image, error) {
 	return Image{}, errors.New("Image not found")
 }
 
+// ReorderImages updates the display order of images in the database.
+//
+// Parameters:
+//   - images: A slice of Image objects in the desired order.
+//
+// Returns:
+//   - error: An error if the database update fails.
 func ReorderImages(images []Image) error {
 	var sequences []int
 	for _, image := range images {
@@ -134,6 +170,13 @@ func persistImageOrder(orderBucket *bolt.Bucket, sequences []int) error {
 	return err
 }
 
+// DeleteImage removals an image from the database and the filesystem.
+//
+// Parameters:
+//   - id: The ID of the image to delete.
+//
+// Returns:
+//   - error: An error if the image is not found or deletion fails.
 func DeleteImage(id int) error {
 	return Db.Update(func(tx *bolt.Tx) error {
 		metadataBucket := tx.Bucket(metadataBucketName)
@@ -157,6 +200,14 @@ func deleteImageOnDisk(path string) error {
 	return os.Remove(filename)
 }
 
+// SaveImageMetadata creates a new image entry in the database.
+//
+// Parameters:
+//   - name: The filename of the image.
+//
+// Returns:
+//   - Image: The created Image object with assigned ID.
+//   - error: An error if the database/metadata update fails.
 func SaveImageMetadata(name string) (Image, error) {
 	var image Image
 	err := Db.Update(func(tx *bolt.Tx) error {

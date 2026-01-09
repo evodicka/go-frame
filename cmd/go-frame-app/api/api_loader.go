@@ -1,9 +1,10 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
 	"log"
 	"os"
+
+	"github.com/gin-gonic/gin"
 )
 
 var (
@@ -18,6 +19,11 @@ func init() {
 	ErrorLogger = log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lmsgprefix|log.Lshortfile)
 }
 
+// RegisterApiEndpoint registers the public API endpoints on the provided router group.
+// It sets up the route for getting the current image.
+//
+// Parameters:
+//   - router: The Gin router group to attach the endpoints to.
 func RegisterApiEndpoint(router *gin.RouterGroup) {
 	router.GET("/image/current", getCurrentImageData)
 }

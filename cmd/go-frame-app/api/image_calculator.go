@@ -1,17 +1,22 @@
 package api
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"go.evodicka.dev/go-frame/cmd/go-frame-app/model"
 	"go.evodicka.dev/go-frame/cmd/go-frame-app/persistence"
-	"net/http"
-	"time"
 )
 
+// ImageRef represents a reference to an image or content to be displayed.
 type ImageRef struct {
-	Path     string     `json:"path" binding:"required"`
-	Type     model.Type `json:"type" binding:"required"`
-	Metadata string     `json:"metadata"`
+	// Path is the filename or URL of the content.
+	Path string `json:"path" binding:"required"`
+	// Type indicates the type of content (e.g. IMAGE or URL).
+	Type model.Type `json:"type" binding:"required"`
+	// Metadata contains additional information about the image (optional).
+	Metadata string `json:"metadata"`
 }
 
 func getCurrentImageData(context *gin.Context) {
