@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -26,11 +25,11 @@ func persistImagesFromDir(metadataBucket *bolt.Bucket) ([]int, error) {
 	if err := os.MkdirAll(ImageDir, 0755); err != nil {
 		return nil, err
 	}
-	files, err := ioutil.ReadDir(ImageDir)
+	files, err := os.ReadDir(ImageDir)
 	if err != nil {
 		return nil, err
 	}
-	filtered := filter(files, func(info os.FileInfo) bool {
+	filtered := filter(files, func(info os.DirEntry) bool {
 		return !info.IsDir() && strings.HasSuffix(info.Name(), ".jpg")
 	})
 	InfoLogger.Println("Found " + strconv.Itoa(len(filtered)) + " images to save")
@@ -56,8 +55,8 @@ func persistImagesFromDir(metadataBucket *bolt.Bucket) ([]int, error) {
 	return sequences, nil
 }
 
-func filter(vs []os.FileInfo, f func(info os.FileInfo) bool) []os.FileInfo {
-	vsf := make([]os.FileInfo, 0)
+func filter(vs []os.DirEntry, f func(info os.DirEntry) bool) []os.DirEntry {
+	vsf := make([]os.DirEntry, 0)
 	for _, v := range vs {
 		if f(v) {
 			vsf = append(vsf, v)
