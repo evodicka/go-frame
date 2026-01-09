@@ -2,17 +2,23 @@ package persistence
 
 import (
 	"encoding/json"
-	bolt "go.etcd.io/bbolt"
 	"time"
+
+	bolt "go.etcd.io/bbolt"
 )
 
+// Status represents the runtime status of the frame (current image, last switch time).
 type Status struct {
+	// CurrentImageId is the ID of the currently displayed image.
 	CurrentImageId int
-	LastSwitch     time.Time
-	ImageDuration  int
+	// LastSwitch is the timestamp when the image was last switched.
+	LastSwitch time.Time
+	// ImageDuration is legacy/unused field? (based on usage it seems unused in update, only loaded).
+	ImageDuration int
 }
 
 const (
+	// CurrentStatusKey is the key used to store the status object in the database.
 	CurrentStatusKey string = "status"
 )
 
@@ -38,6 +44,11 @@ func prepopulateStatus(statusBucket *bolt.Bucket) error {
 	return statusBucket.Put([]byte(CurrentStatusKey), statusBytes)
 }
 
+// GetCurrentStatus retrieves the current runtime status from the database.
+//
+// Returns:
+//   - Status: The current status object.
+//   - error: An error if retrieval fails.
 func GetCurrentStatus() (Status, error) {
 	var status Status
 	err := Db.View(func(tx *bolt.Tx) error {
@@ -48,6 +59,13 @@ func GetCurrentStatus() (Status, error) {
 	return status, err
 }
 
+// UpdateImageStatus updates the current image ID and resets the switch timer.
+//
+// Parameters:
+//   - newId: The ID of the image now being displayed.
+//
+// Returns:
+//   - error: An error if the status update fails.
 func UpdateImageStatus(newId int) error {
 	return Db.Update(func(tx *bolt.Tx) error {
 		statusBucket := tx.Bucket(statusBucketName)

@@ -1,14 +1,18 @@
 package adminapi
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"go.evodicka.dev/go-frame/cmd/go-frame-app/persistence"
-	"net/http"
 )
 
+// ConfigRef represents the configuration data structure for the API.
 type ConfigRef struct {
-	ImageDuration int  `json:"imageDuration" binding:"required"`
-	RandomOrder   bool `json:"randomOrder"`
+	// ImageDuration is the duration in seconds to display each image.
+	ImageDuration int `json:"imageDuration" binding:"required"`
+	// RandomOrder indicates whether images should be shown in random order.
+	RandomOrder bool `json:"randomOrder"`
 }
 
 func loadConfiguration(context *gin.Context) {

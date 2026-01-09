@@ -11,8 +11,10 @@ import (
 
 const INDEX = "index.html"
 
+// ServeFileSystem is an interface that combines http.FileSystem with a check for file existence.
 type ServeFileSystem interface {
 	http.FileSystem
+	// Exists checks if the given filepath exists under the specified prefix.
 	Exists(prefix string, path string) bool
 }
 
@@ -22,6 +24,14 @@ type localFileSystem struct {
 	indexes bool
 }
 
+// LocalFile creates a new localFileSystem that serves files from the specified root directory.
+//
+// Parameters:
+//   - root: The root directory path on the local filesystem.
+//   - indexes: Whether to enable directory indexing (listing files).
+//
+// Returns:
+//   - *localFileSystem: A filesystem that serves local files.
 func LocalFile(root string, indexes bool) *localFileSystem {
 	return &localFileSystem{
 		FileSystem: gin.Dir(root, indexes),
@@ -51,11 +61,28 @@ func (l *localFileSystem) Exists(prefix string, filepath string) bool {
 	return false
 }
 
+// ServeRoot creates a Gin middleware to serve static files from a root directory.
+// It simplifies the usage of Serve by automatically creating a LocalFile system.
+//
+// Parameters:
+//   - urlPrefix: The URL prefix to strip from the request path.
+//   - root: The local directory to serve files from.
+//
+// Returns:
+//   - gin.HandlerFunc: The middleware handler.
 func ServeRoot(urlPrefix, root string) gin.HandlerFunc {
 	return Serve(urlPrefix, LocalFile(root, false))
 }
 
-// Static returns a middleware handler that serves static files in the given directory.
+// Serve returns a middleware handler that serves static files in the given directory.
+// It checks if the file exists using the ServeFileSystem interface before serving.
+//
+// Parameters:
+//   - urlPrefix: The URL prefix to strip from the request path.
+//   - fs: The ServeFileSystem implementation to use for file serving.
+//
+// Returns:
+//   - gin.HandlerFunc: The middleware handler.
 func Serve(urlPrefix string, fs ServeFileSystem) gin.HandlerFunc {
 	fileserver := http.FileServer(fs)
 	if urlPrefix != "" {

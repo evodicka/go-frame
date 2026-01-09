@@ -1,16 +1,18 @@
 package persistence
 
 import (
-	bolt "go.etcd.io/bbolt"
 	"log"
 	"os"
+
+	bolt "go.etcd.io/bbolt"
 )
 
 var (
 	WarningLogger *log.Logger
 	InfoLogger    *log.Logger
 	ErrorLogger   *log.Logger
-	Db            *bolt.DB
+	// Db is the global BoltDB database instance.
+	Db *bolt.DB
 )
 
 func init() {
@@ -44,6 +46,10 @@ func initBuckets() {
 	}
 }
 
+// Close closes the connection to the BoltDB database.
+//
+// Returns:
+//   - error: An error if closing the database fails.
 func Close() error {
 	return Db.Close()
 }

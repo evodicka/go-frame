@@ -1,19 +1,25 @@
 package adminapi
 
 import (
-	"github.com/gin-gonic/gin"
-	"go.evodicka.dev/go-frame/cmd/go-frame-app/model"
-	"go.evodicka.dev/go-frame/cmd/go-frame-app/persistence"
 	"net/http"
 	"os"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
+	"go.evodicka.dev/go-frame/cmd/go-frame-app/model"
+	"go.evodicka.dev/go-frame/cmd/go-frame-app/persistence"
 )
 
+// ImageRef represents an image object for the admin API.
 type ImageRef struct {
-	Id       int        `json:"id" binding:"required"`
-	Path     string     `json:"path" binding:"required"`
-	Type     model.Type `json:"type" binding:"required"`
-	Metadata string     `json:"metadata"`
+	// Id is the unique identifier of the image.
+	Id int `json:"id" binding:"required"`
+	// Path is the filename of the image in the storage.
+	Path string `json:"path" binding:"required"`
+	// Type indicates the content type (e.g. IMAGE).
+	Type model.Type `json:"type" binding:"required"`
+	// Metadata stores optional metadata about the image.
+	Metadata string `json:"metadata"`
 }
 
 func loadAllImageData(context *gin.Context) {

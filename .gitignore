@@ -9,6 +9,7 @@
 
 # dependencies
 /web/node_modules
+/web/.angular
 
 # IDEs and editors
 /.idea
