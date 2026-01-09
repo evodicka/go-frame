@@ -71,6 +71,23 @@ The management API is accessible under the `/admin/api` prefix. Key endpoints in
 The public image data is available at:
 - `GET /api/image/current`: Get the currently active image metadata.
 
+## Running Tests
+
+To run the full test suite for the backend application, including unit and integration tests, run the following command from the `cmd/go-frame-app` directory:
+
+```bash
+cd cmd/go-frame-app
+go test -coverpkg=./... -coverprofile=coverage.out ./...
+```
+
+To view the coverage report:
+
+```bash
+go tool cover -func=coverage.out
+```
+
+This ensures that all packages (`persistence`, `api`, `admin-api`, `static`) are tested and coverage is tracked across boundaries.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

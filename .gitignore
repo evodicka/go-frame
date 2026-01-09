@@ -36,6 +36,7 @@
 npm-debug.log
 testem.log
 /typings
+images
 
 # e2e
 /e2e/*.js
@@ -49,4 +50,6 @@ Thumbs.db
 /vendor
 /images
 web-assets.go
+coverage.out
 
+*.db

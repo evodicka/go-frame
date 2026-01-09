@@ -2,12 +2,13 @@ package persistence
 
 import (
 	"encoding/json"
-	bolt "go.etcd.io/bbolt"
-	"go.evodicka.dev/go-frame/cmd/go-frame-app/model"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
+
+	bolt "go.etcd.io/bbolt"
+	"go.evodicka.dev/go-frame/cmd/go-frame-app/model"
 )
 
 func prepopulateImages(metadataBucket *bolt.Bucket, orderBucket *bolt.Bucket) error {
@@ -21,6 +22,10 @@ func prepopulateImages(metadataBucket *bolt.Bucket, orderBucket *bolt.Bucket) er
 
 func persistImagesFromDir(metadataBucket *bolt.Bucket) ([]int, error) {
 	InfoLogger.Println("Loading images into database")
+	// Harden: Ensure directory exists
+	if err := os.MkdirAll(ImageDir, 0755); err != nil {
+		return nil, err
+	}
 	files, err := ioutil.ReadDir(ImageDir)
 	if err != nil {
 		return nil, err
