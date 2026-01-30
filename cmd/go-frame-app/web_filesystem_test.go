@@ -4,9 +4,9 @@ import (
 	"testing"
 )
 
-func TestEmbeddedFileSystem(t *testing.T) {
+func TestEmbeddedWebViewFileSystem(t *testing.T) {
 	// fs is *embeddedFileSystem
-	fs := EmbeddedFileSystem("web")
+	fs := EmbeddedWebViewFileSystem("web-view")
 
 	// Test Exists
 	// Assuming framework structure, index.html might not exist in root of web if build didn't happen.

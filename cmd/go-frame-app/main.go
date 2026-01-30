@@ -31,7 +31,7 @@ func main() {
 	apiEndpoint := router.Group("/api")
 	adminEndpoint := router.Group("/admin/api")
 	router.Use(static.ServeRoot("/static/images", "images"))
-	router.Use(static.Serve("/", EmbeddedFileSystem("web")))
+	router.Use(static.Serve("/", EmbeddedWebViewFileSystem("web-view")))
 
 	storage, err := persistence.NewStorage("my.db")
 	if err != nil {

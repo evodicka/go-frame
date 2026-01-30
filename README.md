@@ -1,6 +1,6 @@
 # Go-Frame
 
-Go-Frame is a digital photo frame application designed to display images in a continuous loop with configurable intervals. It features a lightweight Go backend and a dedicated Angular-based image display.
+Go-Frame is a digital photo frame application designed to display images in a continuous loop with configurable intervals. It features a lightweight Go backend and a dedicated Vue.js-based image display.
 
 ## Key Features
 
@@ -11,18 +11,18 @@ Go-Frame is a digital photo frame application designed to display images in a co
   - Deleting existing images.
   - Reordering the display sequence.
   - Updating global configurations.
-- **Embedded Web UI**: An Angular frontend is embedded within the Go binary for seamless deployment and image presentation.
-- **Lightweight Persistence**: Uses BoltDB for fast and simple metadata storage.
+- **Embedded Web UI**: A Vue.js frontend is embedded within the Go binary for seamless deployment and image presentation.
+- **Lightweight Persistence**: Uses BoltDB (`my.db`) for fast and simple metadata storage.
 
 ## Technologies
 
-- **Backend**: [Go](https://go.dev/) (v1.16+), [Gin Gonic](https://gin-gonic.com/) (HTTP Web Framework), [BoltDB](https://go.etcd.io/bbolt) (Embedded KV Store).
-- **Frontend**: [Angular](https://angular.io/) (v13), TypeScript.
+- **Backend**: [Go](https://go.dev/) (v1.25+), [Gin Gonic](https://gin-gonic.com/) (HTTP Web Framework), [BoltDB](https://go.etcd.io/bbolt) (Embedded KV Store).
+- **Frontend**: [Vue.js](https://vuejs.org/).
 
 ## Project Structure
 
 - `cmd/go-frame-app/`: Main application source code.
-- `web/`: Angular frontend source code.
+- `cmd/go-frame-app/web-view/`: Vue.js frontend source code (embedded).
 - `scripts/`: Build and utility scripts.
 - `images/`: Local storage for uploaded image files.
 
@@ -30,27 +30,17 @@ Go-Frame is a digital photo frame application designed to display images in a co
 
 ### Prerequisites
 
-- **Go**: v1.16 or higher.
-- **Node.js & npm**: For building the frontend.
+- **Go**: v1.25 or higher.
 
 ### Build and Run
 
-1.  **Build the Frontend**:
-    Navigate to the `web` directory and build the Angular application. This will output the compiled assets to the backend's web directory for embedding.
-    ```bash
-    cd web
-    npm install
-    npm run build
-    ```
-    *(Note: The build script is configured to output directly to `../cmd/go-frame-app/web`)*.
-
-2.  **Build the Backend**:
+1.  **Build the Backend**:
     Navigate to the application root or `cmd/go-frame-app` and build the Go binary.
     ```bash
     go build ./cmd/go-frame-app
     ```
 
-3.  **Run the Application**:
+2.  **Run the Application**:
     Start the server. By default, it runs on port `8080`.
     ```bash
     ./go-frame-app
