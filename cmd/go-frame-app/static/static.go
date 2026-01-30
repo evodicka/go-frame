@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -40,16 +41,33 @@ func LocalFile(root string, indexes bool) *localFileSystem {
 	}
 }
 
-func (l *localFileSystem) Exists(prefix string, filepath string) bool {
-	if p := strings.TrimPrefix(filepath, prefix); len(p) < len(filepath) {
+func (l *localFileSystem) Exists(prefix string, filepathStr string) bool {
+	if p := strings.TrimPrefix(filepathStr, prefix); len(p) < len(filepathStr) {
+		// Join the requested path with the root and ensure it stays within the root directory.
 		name := path.Join(l.root, p)
-		stats, err := os.Stat(name)
+
+		absRoot, err := filepath.Abs(l.root)
+		if err != nil {
+			return false
+		}
+
+		absName, err := filepath.Abs(name)
+		if err != nil {
+			return false
+		}
+
+		rel, err := filepath.Rel(absRoot, absName)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+			return false
+		}
+
+		stats, err := os.Stat(absName)
 		if err != nil {
 			return false
 		}
 		if stats.IsDir() {
 			if !l.indexes {
-				index := path.Join(name, INDEX)
+				index := filepath.Join(absName, INDEX)
 				_, err := os.Stat(index)
 				if err != nil {
 					return false
